@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "name": "شركة النور للأدوية",
+    "phone": "01012345678",
+    "email": "info@elnourpharma.com",
+    "address": "القاهرة - مدينة نصر",
+    "paymentType": "آجل",
+    "notes": "يتعامل معنا منذ 2019"
+  },
+  {
+    "id": 2,
+    "name": "شركةemed",
+    "phone": "01012345678",
+    "email": "info@emed.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2020"
+  },
+  {
+    "id": 3,
+    "name": "شركة ABC",
+    "phone": "01012345678",
+    "email": "info@abc.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2021"
+  },
+  {
+    "id": 4,
+    "name": "شركة XYZ",
+    "phone": "01012345678",
+    "email": "info@xyz.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2022"
+  },
+  {
+    "id": 5,
+    "name": "شركة LMN",
+    "phone": "01012345678",
+    "email": "info@lmn.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2023"
+  },
+  {
+    "id": 6,
+    "name": "شركة OPQ",
+    "phone": "01012345678",
+    "email": "info@opq.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2024"
+  },
+  {
+    "id": 7,
+    "name": "شركة RST",
+    "phone": "01012345678",
+    "email": "info@rst.com",
+    "address": "القاهرة - شارع مصر",
+    "paymentType": "نقد",
+    "notes": "يتعامل معنا منذ 2025"
+  }
+]

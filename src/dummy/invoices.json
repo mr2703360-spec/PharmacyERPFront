@@ -1,0 +1,33 @@
+[
+  {
+    "id": "INV-001",
+    "invoiceNumber": "INV-001",
+    "date": "2026-03-01",
+    "customerId": 1,
+    "customerName": "محمد علي",
+    "supplierId": 1,
+    "totalBeforeDiscount": 300,
+    "discount": 20,
+    "tax": 42,
+    "totalAfterTax": 322,
+    "paymentStatus": "partial",
+    "paymentMethod": "cash",
+    "notes": "تم دفع جزء من الفاتورة"
+  },
+  {
+    "id": "INV-002",
+    "invoiceNumber": "INV-002",
+    "date": "2026-03-02",
+    "customerId": 2,
+    "customerName": "عيادة الشفاء",
+    "supplierId": 2,
+    "totalBeforeDiscount": 1500,
+    "discount": 0,
+    "tax": 225,
+    "totalAfterTax": 1725,
+    "paymentStatus": "unpaid",
+    "paymentMethod": "transfer",
+    "notes": "فاتورة مستحقة خلال 30 يومًا"
+  }
+]
+

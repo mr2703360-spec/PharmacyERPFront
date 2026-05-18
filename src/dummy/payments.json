@@ -1,0 +1,21 @@
+[
+  {
+    "id": "PAY-001",
+    "invoiceId": "INV-001",
+    "date": "2026-03-01",
+    "amount": 200,
+    "method": "cash",
+    "reference": "RCPT-1001",
+    "notes": "دفعة أولى"
+  },
+  {
+    "id": "PAY-002",
+    "invoiceId": "INV-001",
+    "date": "2026-03-03",
+    "amount": 122,
+    "method": "card",
+    "reference": "POS-55321",
+    "notes": "تسوية باقي الفاتورة"
+  }
+]
+

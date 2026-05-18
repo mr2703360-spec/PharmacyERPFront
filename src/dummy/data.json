@@ -1,0 +1,52 @@
+[
+  {
+    "id": "001",
+    "name": "باراسيتامول 500",
+    "category": "مسكن ألم",
+    "quantity": 20,
+    "price": 15,
+    "expiryDate": "2026-12-01",
+    "supplier": "شركة ألفا",
+    "stockAlert": "متاح"
+  },
+  {
+    "id": "002",
+    "name": "أموكسيسيلين",
+    "category": "مضاد حيوي",
+    "quantity": 5,
+    "price": 50,
+    "expiryDate": "2026-05-15",
+    "supplier": "شركة بيتا",
+    "stockAlert": "قرب النفاد"
+  },
+  {
+    "id": "003",
+    "name": "فيتامين C",
+    "category": "مكمل غذائي",
+    "quantity": 50,
+    "price": 30,
+    "expiryDate": "2027-01-10",
+    "supplier": "شركة جاما",
+    "stockAlert": "متاح"
+  },
+  {
+    "id": "004",
+    "name": "إيبوبروفين 400",
+    "category": "مسكن ألم",
+    "quantity": 8,
+    "price": 25,
+    "expiryDate": "2026-08-20",
+    "supplier": "شركة دلتا",
+    "stockAlert": "قرب النفاد"
+  },
+  {
+    "id": "005",
+    "name": "أوميبرازول",
+    "category": "مضاد حموضة",
+    "quantity": 15,
+    "price": 40,
+    "expiryDate": "2026-11-05",
+    "supplier": "شركة إبسيلون",
+    "stockAlert": "متاح"
+  }
+]
