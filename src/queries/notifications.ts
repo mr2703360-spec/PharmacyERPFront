@@ -1,5 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from "@/apis/notifications";
+import {
+  useGetNotifications,
+  useMarkAllNotificationsAsRead,
+  useMarkNotificationAsRead,
+  useDeleteNotification,
+  getGetNotificationsQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { notificationsAtom } from "@/atoms";
 import { useEffect } from "react";
@@ -8,39 +14,45 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useAtom(notificationsAtom);
   const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ["notifications"],
-    queryFn: async () => {
-      const data = await getNotifications();
-      return data;
+  const query = useGetNotifications({
+    query: {
+      refetchInterval: 30000, // Poll every 30 seconds
+      select: (data) => data,
     },
-    refetchInterval: 30000, // Poll every 30 seconds
   });
 
   useEffect(() => {
-    if (query.data) {
-      setNotifications(query.data);
+    if (query.data && "data" in query.data && query.data.status === 200) {
+      const notifData = query.data.data as any;
+      if (notifData?.data && Array.isArray(notifData.data)) {
+        setNotifications(notifData.data);
+      } else if (notifData?.notifications && Array.isArray(notifData.notifications)) {
+        setNotifications(notifData.notifications);
+      }
     }
   }, [query.data, setNotifications]);
 
-  const markReadMutation = useMutation({
-    mutationFn: markAsRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  const markReadMutation = useMarkNotificationAsRead({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetNotificationsQueryKey() });
+      },
     },
   });
 
-  const markAllReadMutation = useMutation({
-    mutationFn: markAllAsRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  const markAllReadMutation = useMarkAllNotificationsAsRead({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetNotificationsQueryKey() });
+      },
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteNotification,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  const deleteMutation = useDeleteNotification({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetNotificationsQueryKey() });
+      },
     },
   });
 

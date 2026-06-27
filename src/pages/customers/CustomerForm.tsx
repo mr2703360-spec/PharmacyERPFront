@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { customerSchema, type CustomerFormValues } from "./customerSchema";
-import { createCustomer, updateCustomer } from "@/apis/customers";
+import { useCreateCustomer, useUpdateCustomer } from "@/api";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -78,15 +78,18 @@ export default function CustomerForm({ id, values, onSuccess, onCancel }: Readon
     }
   }, [values, form, isEdit]);
 
+  const createMutation = useCreateCustomer();
+  const updateMutation = useUpdateCustomer();
+
   const onSubmit: SubmitHandler<CustomerFormValues> = async (data) => {
     try {
       if (!isEdit) {
-        await createCustomer(data);
+        await createMutation.mutateAsync({ data: data as any });
         toast.success("تم إضافة العميل بنجاح", {
           description: `تم إضافة ${data.name} إلى قاعدة البيانات.`,
         });
       } else {
-        await updateCustomer(id, data);
+        await updateMutation.mutateAsync({ id: id as string, data: data as any });
         toast.success("تم تحديث معلومات العميل بنجاح", {
           description: `تم تحديث ${data.name} في قاعدة البيانات.`,
         });
@@ -97,6 +100,8 @@ export default function CustomerForm({ id, values, onSuccess, onCancel }: Readon
       toast.error(error?.response?.data?.message || "حدث خطأ ما");
     }
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <form id="customer-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" dir="rtl">
@@ -289,9 +294,9 @@ export default function CustomerForm({ id, values, onSuccess, onCancel }: Readon
             إلغاء
           </Button>
         )}
-        <Button type="submit" form="customer-form" className="gap-2">
+        <Button type="submit" form="customer-form" className="gap-2" disabled={isPending}>
           <Save className="h-4 w-4" />
-          {isEdit ? "تحديث العميل" : "إضافة العميل"}
+          {isPending ? "جارٍ الحفظ..." : isEdit ? "تحديث العميل" : "إضافة العميل"}
         </Button>
       </div>
     </form>

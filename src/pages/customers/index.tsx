@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/common/SearchInput";
 import {
   Select,
   SelectContent,
@@ -31,16 +31,17 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Search,
   Users,
   UserCheck,
   DollarSign,
   Star,
+  Eye,
 } from "lucide-react";
 import { useCustomers, useCustomerQueryFilterState } from "@/queries/customers";
 import { DeleteDialog } from "@/components/delete-dialog";
+import { ViewItemDialog } from "@/components/view-item-dialog";
 import { toast } from "sonner";
-import { deleteCustomer } from "@/apis/customers";
+import { useDeleteCustomer } from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import { CustomerDrawer } from "./CustomerDrawer";
 import { StatusToggleCell } from "./CustomerStatusToggle";
@@ -53,10 +54,18 @@ export default function Customers() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
 
-  const customers = customersResponse?.data || [];
-  const pagination = customersResponse?.pagination;
+  const customers =
+    customersResponse?.status === 200 ? customersResponse.data?.data || [] : [];
+  const pagination =
+    customersResponse?.status === 200
+      ? customersResponse.data?.pagination
+      : undefined;
   const totalCustomers = pagination?.total || customers.length;
   const activeCustomers = customers.filter((c) => c.status === "active").length;
   const vipCustomers = customers.filter((c) => c.isVIP).length;
@@ -65,17 +74,19 @@ export default function Customers() {
     0,
   );
 
+  const deleteMutation = useDeleteCustomer();
+
   const handleDelete = async () => {
     if (!selectedCustomer) return;
     try {
-      await deleteCustomer(selectedCustomer._id);
+      await deleteMutation.mutateAsync({ id: selectedCustomer._id });
       toast.success("تم حذف العميل بنجاح");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       refetch();
       setDeleteDialogOpen(false);
       setSelectedCustomer(null);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "فشل حذف العميل");
+    } catch {
+      toast.error("فشل حذف العميل");
     }
   };
 
@@ -143,7 +154,10 @@ export default function Customers() {
       header: "الإجراءات",
       cell: ({ row }) => {
         const customer = row.original;
-        const hasAnyAction = can("update_customer") || can("delete_customer");
+        const hasAnyAction =
+          can("view_customer") ||
+          can("update_customer") ||
+          can("delete_customer");
         if (!hasAnyAction) return null;
         return (
           <DropdownMenu>
@@ -156,6 +170,18 @@ export default function Customers() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {can("view_customer") && (
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setViewingCustomer(customer);
+                    setViewDialogOpen(true);
+                  }}
+                >
+                  <Eye className="ml-2 h-4 w-4" />
+                  عرض
+                </DropdownMenuItem>
+              )}
               {can("update_customer") && (
                 <DropdownMenuItem
                   className="cursor-pointer"
@@ -215,9 +241,7 @@ export default function Customers() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              عملاء VIP
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">عملاء VIP</CardTitle>
             <Star className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
@@ -260,17 +284,16 @@ export default function Customers() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="بحث بالاسم أو الهاتف..."
-                value={query.search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9 w-full sm:w-[250px]"
-              />
-            </div>
+            <SearchInput
+              value={query.search}
+              onChange={setSearch}
+              placeholder="بحث بالاسم أو الهاتف..."
+            />
             {can("create_customer") && (
-              <Button className="gap-2 w-full sm:w-auto" onClick={handleCreateNew}>
+              <Button
+                className="gap-2 w-full sm:w-auto"
+                onClick={handleCreateNew}
+              >
                 <Plus className="h-4 w-4" />
                 إضافة عميل
               </Button>
@@ -279,10 +302,10 @@ export default function Customers() {
         </CardHeader>
         <CardContent>
           <DataTable
-            columns={columns}
+            columns={columns as any}
             data={customers}
             loading={isLoading}
-            totalPages={customersResponse?.pagination?.totalPages || 1}
+            totalPages={pagination?.totalPages || 1}
           />
         </CardContent>
       </Card>
@@ -293,13 +316,33 @@ export default function Customers() {
         title="حذف عميل"
         itemName={selectedCustomer?.name}
         onConfirm={handleDelete}
-        isLoading={false}
+        isLoading={deleteMutation.isPending}
       />
 
       <CustomerDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         customer={selectedCustomer}
+      />
+
+      <ViewItemDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        item={viewingCustomer || {}}
+        title={`تفاصيل العميل: ${viewingCustomer?.name || ""}`}
+        labels={{
+          name: "الاسم",
+          phone: "الهاتف",
+          email: "البريد الإلكتروني",
+          address: "العنوان",
+          status: "الحالة",
+          outstandingBalance: "المستحقات",
+          isVIP: "عميل VIP",
+          notes: "ملاحظات",
+          lastVisit: "آخر زيارة",
+          createdAt: "تاريخ الإنشاء",
+          updatedAt: "تاريخ التحديث",
+        }}
       />
     </div>
   );

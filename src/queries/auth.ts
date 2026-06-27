@@ -1,6 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useGetMe } from "@/api";
 import { useSetAtom } from "jotai";
-import { getMe } from "@/apis/auth";
 import { currentUserAtom } from "@/atoms";
 
 /**
@@ -13,15 +12,20 @@ import { currentUserAtom } from "@/atoms";
 export const useMe = () => {
   const setCurrentUser = useSetAtom(currentUserAtom);
 
-  return useQuery({
-    queryKey: ["me"],
-    queryFn: async () => {
-      const data = await getMe();
-      setCurrentUser(data.user); // ← updates localStorage via atomWithStorage
-      return data;
+  return useGetMe({
+    query: {
+      queryKey: ["me"],
+      staleTime: 1000 * 60 * 5,    // 5 minutes
+      refetchOnWindowFocus: true,   // sync when user switches back to the tab
+      retry: false,                 // don't spam on 401
+      select: (data) => {
+        // data is of type getMeResponse — narrowed to the success case
+        if ("data" in data && data.status === 200) {
+          const user = (data.data as { user?: unknown }).user;
+          if (user) setCurrentUser(user as Parameters<typeof setCurrentUser>[0]);
+        }
+        return data;
+      },
     },
-    staleTime: 1000 * 60 * 5,   // 5 minutes
-    refetchOnWindowFocus: true,  // sync when user switches back to the tab
-    retry: false,                // don't spam on 401
   });
 };

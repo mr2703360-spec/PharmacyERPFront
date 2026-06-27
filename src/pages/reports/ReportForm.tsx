@@ -5,7 +5,7 @@ import * as z from "zod";
 import { useNavigate, useParams } from "react-router-dom";
 import { Save, ArrowRight, FileText, Calendar as CalendarIcon, Tag, AlignLeft, Info } from "lucide-react";
 
-import { useCreateReport, useUpdateReport, useReport } from "@/queries/reports";
+import { useCreateReportAction, useUpdateReportAction, useReport } from "@/queries/reports";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,9 +59,9 @@ export default function ReportForm() {
   const isEdit = !!id;
   const navigate = useNavigate();
 
-  const { data: reportData, isLoading } = useReport(id);
-  const createMutation = useCreateReport();
-  const updateMutation = useUpdateReport();
+  const { data: reportResponse, isLoading } = useReport(id);
+  const createMutation = useCreateReportAction();
+  const updateMutation = useUpdateReportAction();
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -76,27 +76,27 @@ export default function ReportForm() {
   });
 
   useEffect(() => {
-    if (isEdit && reportData) {
-      const report = reportData;
+    if (isEdit && reportResponse?.status === 200 && reportResponse.data?.data) {
+      const report = reportResponse.data.data;
       form.reset({
         title: report.title,
-        type: report.type,
+        type: report.type as any,
         description: report.description || "",
-        status: report.status,
+        status: report.status as any,
         startDate: report.dateRange?.startDate ? new Date(report.dateRange.startDate).toISOString().split("T")[0] : "",
         endDate: report.dateRange?.endDate ? new Date(report.dateRange.endDate).toISOString().split("T")[0] : "",
       });
     }
-  }, [isEdit, reportData, form]);
+  }, [isEdit, reportResponse, form]);
 
   const onSubmit = (data: ReportFormValues) => {
     if (isEdit) {
       updateMutation.mutate(
-        { id, data },
+        { id: id!, data: data as any },
         { onSuccess: () => navigate("/reports") }
       );
     } else {
-      createMutation.mutate(data, { onSuccess: () => navigate("/reports") });
+      createMutation.mutate({ data: data as any }, { onSuccess: () => navigate("/reports") });
     }
   };
 

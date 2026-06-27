@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { toggleCustomerStatus } from "@/apis/customers";
+import { useToggleCustomerStatus } from "@/api";
 
 interface StatusToggleCellProps {
   customer: Customer;
@@ -25,56 +25,56 @@ export function StatusToggleCell({ customer }: StatusToggleCellProps) {
   const isActive = optimisticStatus === "active";
   const queryClient = useQueryClient();
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: (newStatus: string) =>
-      toggleCustomerStatus(customer._id, newStatus),
-    onMutate: async (newStatus) => {
-      await queryClient.cancelQueries({ queryKey: ["customers"] });
+  const { mutate, isPending } = useToggleCustomerStatus({
+    mutation: {
+      onMutate: async ({ data: { status: newStatus } }) => {
+        await queryClient.cancelQueries({ queryKey: ["customers"] });
 
-      const previousData = queryClient.getQueryData<CustomersResponse>([
-        "customers",
-      ]);
+        const previousData = queryClient.getQueryData<CustomersResponse>([
+          "customers",
+        ]);
 
-      queryClient.setQueryData<CustomersResponse>(["customers"], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          data: old.data.map((c) =>
-            c._id === customer._id
-              ? { ...c, status: newStatus as "active" | "inactive" }
-              : c,
-          ),
-        };
-      });
+        queryClient.setQueryData<CustomersResponse>(["customers"], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((c) =>
+              c._id === customer._id
+                ? { ...c, status: newStatus as "active" | "inactive" }
+                : c,
+            ),
+          };
+        });
 
-      setOptimisticStatus(newStatus as "active" | "inactive");
-      return { previousData };
-    },
-    onError: (_err, _newStatus, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(["customers"], context.previousData);
-        const originalStatus =
-          context.previousData.data.find((c) => c._id === customer._id)
-            ?.status || "active";
-        setOptimisticStatus(originalStatus);
-      } else {
-        setOptimisticStatus(customer.status || "active");
-      }
-      toast.error("فشل تغيير حالة العميل");
-    },
-    onSuccess: (_, newStatus) => {
-      toast.success(
-        newStatus === "active" ? "تم تنشيط حساب العميل" : "تم تعطيل حساب العميل",
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-    },
+        setOptimisticStatus(newStatus as "active" | "inactive");
+        return { previousData };
+      },
+      onError: (_err, _variables, context: any) => {
+        if (context?.previousData) {
+          queryClient.setQueryData(["customers"], context.previousData);
+          const originalStatus =
+            context.previousData.data.find((c: Customer) => c._id === customer._id)
+              ?.status || "active";
+          setOptimisticStatus(originalStatus);
+        } else {
+          setOptimisticStatus(customer.status || "active");
+        }
+        toast.error("فشل تغيير حالة العميل");
+      },
+      onSuccess: (_, { data: { status: newStatus } }) => {
+        toast.success(
+          newStatus === "active" ? "تم تنشيط حساب العميل" : "تم تعطيل حساب العميل",
+        );
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+      },
+    }
   });
 
   const handleToggle = () => {
     const newStatus = isActive ? "inactive" : "active";
-    mutate(newStatus);
+    mutate({ id: customer._id, data: { status: newStatus } as any });
   };
 
   return (

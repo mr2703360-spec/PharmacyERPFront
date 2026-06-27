@@ -63,8 +63,8 @@ function StatCardSkeleton() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Home() {
-  const { data, isLoading } = useStats();
-  const stats = data?.data;
+  const { data: response, isLoading } = useStats();
+  const stats = response?.status === 200 ? response.data.data : undefined;
 
   const changeColor = (change: number) =>
     change >= 0 ? "text-green-600" : "text-red-500";
@@ -73,45 +73,45 @@ export default function Home() {
     ? [
         {
           title: "إجمالي الإيرادات (هذا الشهر)",
-          value: formatCurrency(stats.totalRevenue),
+          value: formatCurrency(stats.totalRevenue ?? 0),
           icon: DollarSign,
-          change: `${stats.revenueChange >= 0 ? "+" : ""}${stats.revenueChange}%`,
-          changePositive: stats.revenueChange >= 0,
+          change: `${(stats.revenueChange ?? 0) >= 0 ? "+" : ""}${stats.revenueChange ?? 0}%`,
+          changePositive: (stats.revenueChange ?? 0) >= 0,
           sub: "مقارنة بالشهر الماضي",
         },
         {
           title: "مبيعات اليوم",
-          value: stats.salesToday.toString(),
+          value: (stats.salesToday ?? 0).toString(),
           icon: ShoppingCart,
           change: null,
           sub: "فاتورة مسجلة اليوم",
         },
         {
           title: "إجمالي الأدوية",
-          value: stats.totalMedicines.toString(),
+          value: (stats.totalMedicines ?? 0).toString(),
           icon: Package,
           change: null,
-          sub: `${stats.outOfStockCount} نفذ من المخزون`,
-          alert: stats.outOfStockCount > 0,
+          sub: `${stats.outOfStockCount ?? 0} نفذ من المخزون`,
+          alert: (stats.outOfStockCount ?? 0) > 0,
         },
         {
           title: "منخفض المخزون",
-          value: stats.lowStockCount.toString(),
+          value: (stats.lowStockCount ?? 0).toString(),
           icon: AlertTriangle,
           change: null,
           sub: "يحتاج إعادة طلب",
-          alert: stats.lowStockCount > 0,
+          alert: (stats.lowStockCount ?? 0) > 0,
         },
         {
           title: "الموردون",
-          value: stats.totalSuppliers.toString(),
+          value: (stats.totalSuppliers ?? 0).toString(),
           icon: Truck,
           change: null,
           sub: "مورد نشط",
         },
         {
           title: "المستخدمون",
-          value: stats.totalUsers.toString(),
+          value: (stats.totalUsers ?? 0).toString(),
           icon: Users,
           change: null,
           sub: "مستخدم مسجل",
@@ -145,7 +145,7 @@ export default function Home() {
                   <div className="text-2xl font-bold">{stat.value}</div>
                   <p className={`text-xs mt-1 ${stat.alert ? "text-red-500" : "text-muted-foreground"}`}>
                     {stat.change && (
-                      <span className={`font-semibold ${changeColor(stats!.revenueChange)} ml-1`}>
+                      <span className={`font-semibold ${changeColor(stats!.revenueChange ?? 0)} ml-1`}>
                         {stat.change}
                       </span>
                     )}
@@ -182,21 +182,21 @@ export default function Home() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats?.recentSales.length === 0 && (
+                  {(!stats?.recentSales || stats.recentSales.length === 0) && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
                         لا توجد مبيعات مسجلة
                       </TableCell>
                     </TableRow>
                   )}
-                  {stats?.recentSales.map((sale) => (
+                  {(stats?.recentSales ?? []).map((sale) => (
                     <TableRow key={sale._id}>
                       <TableCell className="font-mono text-xs">{sale.invoiceNumber}</TableCell>
                       <TableCell>{sale.customerName}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(sale.total)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(sale.total ?? 0)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {paymentMethodLabel[sale.paymentMethod] ?? sale.paymentMethod}
+                          {sale.paymentMethod ? (paymentMethodLabel[sale.paymentMethod] ?? sale.paymentMethod) : ""}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -240,27 +240,27 @@ export default function Home() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats?.lowStockItems.length === 0 && (
+                  {(!stats?.lowStockItems || stats.lowStockItems.length === 0) && (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center text-muted-foreground py-6">
                         المخزون في حالة جيدة ✓
                       </TableCell>
                     </TableRow>
                   )}
-                  {stats?.lowStockItems.map((item) => (
+                  {(stats?.lowStockItems ?? []).map((item) => (
                     <TableRow key={item._id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>
-                        <span className={item.quantity < 10 ? "text-red-600 font-bold" : "text-yellow-600 font-semibold"}>
-                          {item.quantity}
+                        <span className={(item.quantity ?? 0) < 10 ? "text-red-600 font-bold" : "text-yellow-600 font-semibold"}>
+                          {item.quantity ?? 0}
                         </span>
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={item.quantity < 10 ? "destructive" : "outline"}
+                          variant={(item.quantity ?? 0) < 10 ? "destructive" : "outline"}
                           className="text-xs"
                         >
-                          {item.quantity < 10 ? "حرج" : "منخفض"}
+                          {(item.quantity ?? 0) < 10 ? "حرج" : "منخفض"}
                         </Badge>
                       </TableCell>
                     </TableRow>

@@ -5,7 +5,9 @@ import { Loader2 } from "lucide-react";
 
 export default function EditUser() {
   const { id } = useParams();
-  const { value: userInfo ,loading} = useUser(id as string);
+  const { data: response, isLoading: loading } = useUser(id as string);
+
+  const userInfo = response?.status === 200 ? (response.data as any).data : undefined;
 
   if (loading) {
     return (
@@ -19,7 +21,7 @@ export default function EditUser() {
 
   return (
     <>
-      <UserFormComponent mode="update" defaultValues={userInfo} />;
+      <UserFormComponent mode="update" defaultValues={userInfo as any} />;
       <h1>{userInfo?.name}</h1>
     </>
   );

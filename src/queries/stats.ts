@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { getStats } from "@/apis/stats";
+import { useGetStats } from "@/api";
 
 export const useStats = () => {
-  return useQuery({
-    queryKey: ["stats"],
-    queryFn: getStats,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+  return useGetStats({
+    query: {
+      staleTime: 1000 * 60 * 2, // 2 minutes
+    },
   });
 };

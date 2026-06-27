@@ -1,12 +1,22 @@
-import { getCustomers, getCustomer } from "@/apis/customers";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import {
+  useGetCustomers,
+  useGetCustomerById,
+  useCreateCustomer,
+  useUpdateCustomer,
+  useDeleteCustomer,
+  useToggleCustomerStatus,
+  getGetCustomersQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { CreateCustomerRequest, UpdateCustomerRequest, ToggleStatusRequest } from "@/api";
 
 export interface CustomerQueryParams {
-  search: string;
-  page: number;
-  limit: number;
-  isVIP: string; 
+  search?: string;
+  page?: number;
+  limit?: number;
+  isVIP?: string;
 }
 
 export const useCustomerQueryFilterState = () => {
@@ -18,42 +28,80 @@ export const useCustomerQueryFilterState = () => {
   });
 
   return {
-    query: query as CustomerQueryParams,
+    query: query as Required<CustomerQueryParams>,
     setQuery,
     setSearch: (search: string) => setQuery({ search, page: 1 }),
     setPage: (page: number) => setQuery({ page }),
     setLimit: (limit: number) => setQuery({ limit, page: 1 }),
     setIsVIP: (isVIP: string) => setQuery({ isVIP, page: 1 }),
-    resetFilters: () =>
-      setQuery({ search: "", page: 1, limit: 10, isVIP: "all" }),
+    resetFilters: () => setQuery({ search: "", page: 1, limit: 10, isVIP: "all" }),
   };
-};
-
-export const buildQueryString = (
-  params: Partial<CustomerQueryParams>,
-): string => {
-  const searchParams = new URLSearchParams();
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", params.page.toString());
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-  if (params.isVIP && params.isVIP !== "all")
-    searchParams.set("isVIP", params.isVIP);
-  return searchParams.toString();
 };
 
 export const useCustomers = () => {
   const { query } = useCustomerQueryFilterState();
-  const queryString = buildQueryString(query);
-  return useQuery({
-    queryKey: ["customers", query],
-    queryFn: () => getCustomers(queryString),
+  return useGetCustomers({
+    search: query.search || undefined,
+    page: query.page,
+    limit: query.limit,
+    isVIP: query.isVIP !== "all" ? (query.isVIP as "true" | "false") : undefined,
   });
 };
 
 export const useCustomer = (id: string) => {
-  return useQuery({
-    queryKey: ["customer", id],
-    queryFn: () => getCustomer(id),
-    enabled: !!id,
+  return useGetCustomerById(id, { query: { enabled: !!id } });
+};
+
+export const useCreateCustomerAction = () => {
+  const queryClient = useQueryClient();
+  return useCreateCustomer({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCustomersQueryKey() });
+        toast.success("تم إضافة العميل بنجاح");
+      },
+      onError: () => toast.error("فشل في إضافة العميل"),
+    },
   });
 };
+
+export const useUpdateCustomerAction = () => {
+  const queryClient = useQueryClient();
+  return useUpdateCustomer({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCustomersQueryKey() });
+        toast.success("تم تحديث العميل بنجاح");
+      },
+      onError: () => toast.error("فشل في تحديث العميل"),
+    },
+  });
+};
+
+export const useDeleteCustomerAction = () => {
+  const queryClient = useQueryClient();
+  return useDeleteCustomer({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCustomersQueryKey() });
+        toast.success("تم حذف العميل بنجاح");
+      },
+      onError: () => toast.error("فشل في حذف العميل"),
+    },
+  });
+};
+
+export const useToggleCustomerStatusAction = () => {
+  const queryClient = useQueryClient();
+  return useToggleCustomerStatus({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCustomersQueryKey() });
+        toast.success("تم تغيير حالة العميل بنجاح");
+      },
+      onError: () => toast.error("فشل في تغيير حالة العميل"),
+    },
+  });
+};
+
+export type { CreateCustomerRequest, UpdateCustomerRequest, ToggleStatusRequest };

@@ -4,7 +4,7 @@ import { usePurchase } from "@/queries/purchases";
 
 export default function PurchasesUpdate() {
   const { id } = useParams<{ id: string }>();
-  const { value: purchase, loading, error } = usePurchase(id ?? "");
+  const { data: purchaseResponse, isLoading: loading, error } = usePurchase(id ?? "");
 
   if (loading) {
     return (
@@ -14,7 +14,7 @@ export default function PurchasesUpdate() {
     );
   }
 
-  if (error || !purchase) {
+  if (error || !purchaseResponse) {
     return (
       <div className="container mx-auto py-8 px-4" dir="rtl">
         <p className="text-red-500 text-center">تعذّر تحميل بيانات الفاتورة.</p>
@@ -22,5 +22,7 @@ export default function PurchasesUpdate() {
     );
   }
 
-  return <PurchaseForm id={id} isEdit initialData={purchase} />;
+  const purchaseData = purchaseResponse?.status === 200 ? purchaseResponse.data.data : undefined;
+
+  return <PurchaseForm id={id} isEdit initialData={purchaseData as any} />;
 }

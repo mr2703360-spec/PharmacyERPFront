@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   FileText,
   Plus,
-  Search,
   Eye,
   Pencil,
   Trash2,
@@ -12,11 +11,14 @@ import {
 import { useAtom } from "jotai";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { useReports, useDeleteReport } from "@/queries/reports";
+import {
+  useReports,
+  useDeleteReportAction as useDeleteReport,
+} from "@/queries/reports";
 import { queryTableAtom } from "@/atoms";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/common/SearchInput";
 import {
   Card,
   CardContent,
@@ -32,20 +34,33 @@ import DataTable from "@/components/ui/data-table";
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "Generated":
-      return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-200">مُنشأ</Badge>;
+      return (
+        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-200">
+          مُنشأ
+        </Badge>
+      );
     case "Draft":
     default:
-      return <Badge variant="outline" className="text-muted-foreground">مسودة</Badge>;
+      return (
+        <Badge variant="outline" className="text-muted-foreground">
+          مسودة
+        </Badge>
+      );
   }
 };
 
 const getTypeBadge = (type: string) => {
   switch (type) {
-    case "Sales": return <Badge variant="secondary">مبيعات</Badge>;
-    case "Purchases": return <Badge variant="secondary">مشتريات</Badge>;
-    case "Inventory": return <Badge variant="secondary">مخزون</Badge>;
-    case "Financial": return <Badge variant="secondary">مالي</Badge>;
-    default: return <Badge variant="secondary">مخصص</Badge>;
+    case "Sales":
+      return <Badge variant="secondary">مبيعات</Badge>;
+    case "Purchases":
+      return <Badge variant="secondary">مشتريات</Badge>;
+    case "Inventory":
+      return <Badge variant="secondary">مخزون</Badge>;
+    case "Financial":
+      return <Badge variant="secondary">مالي</Badge>;
+    default:
+      return <Badge variant="secondary">مخصص</Badge>;
   }
 };
 
@@ -60,7 +75,7 @@ export default function Reports() {
 
   const handleDelete = () => {
     if (deleteId) {
-      deleteMutation.mutate(deleteId, {
+      deleteMutation.mutate({ id: deleteId }, {
         onSuccess: () => setDeleteId(null),
       });
     }
@@ -90,7 +105,7 @@ export default function Reports() {
           return (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarIcon className="h-3 w-3" />
-              {new Date(dateRange.startDate).toLocaleDateString("ar-EG")} 
+              {new Date(dateRange.startDate).toLocaleDateString("ar-EG")}
               {" - "}
               {new Date(dateRange.endDate).toLocaleDateString("ar-EG")}
             </span>
@@ -152,7 +167,9 @@ export default function Reports() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">التقارير</h1>
-            <p className="text-sm text-muted-foreground">إدارة التقارير والتحليلات</p>
+            <p className="text-sm text-muted-foreground">
+              إدارة التقارير والتحليلات
+            </p>
           </div>
         </div>
         <Link to="/reports/create">
@@ -168,26 +185,31 @@ export default function Reports() {
           <CardTitle>قائمة التقارير</CardTitle>
           <CardDescription>عرض وتعديل التقارير المحفوظة.</CardDescription>
           <div className="flex items-center gap-4 mt-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ابحث باسم التقرير..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setQueryTable((prev) => ({ ...prev, page: 1 }));
-                }}
-                className="pr-10"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onChange={(val) => {
+                setSearch(val);
+                setQueryTable((prev) => ({ ...prev, page: 1 }));
+              }}
+              placeholder="ابحث باسم التقرير..."
+              className="max-w-sm"
+            />
           </div>
         </CardHeader>
         <CardContent>
           <DataTable
-            columns={columns}
-            data={reportsResponse?.data || []}
+            columns={columns as any}
+            data={
+              reportsResponse?.status === 200
+                ? reportsResponse.data?.data || []
+                : []
+            }
             loading={isLoading}
-            totalPages={reportsResponse?.pagination?.totalPages || 0}
+            totalPages={
+              reportsResponse?.status === 200
+                ? reportsResponse.data?.pagination?.totalPages || 0
+                : 0
+            }
           />
         </CardContent>
       </Card>

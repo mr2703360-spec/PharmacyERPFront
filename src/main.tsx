@@ -4,6 +4,10 @@ import "./assets/style/index.css";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes/index.ts";
 
+import { ThemeProvider } from "./components/theme-provider";
+
 createRoot(document.getElementById("root")!).render(
-  <RouterProvider router={router} />
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <RouterProvider router={router} />
+  </ThemeProvider>
 );

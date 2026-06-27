@@ -25,11 +25,12 @@ import { useNavigate } from "react-router";
 import { useSetAtom, useAtomValue } from "jotai";
 import { tokenAtom, currentUserAtom } from "@/atoms";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { ThemeToggle } from "../theme-toggle";
 
 // ─── Pages registry ───────────────────────────────────────────────────────────
 interface PageEntry {
-  label: string;       // Arabic display name
-  keywords: string[];  // extra search terms (Arabic + English)
+  label: string; // Arabic display name
+  keywords: string[]; // extra search terms (Arabic + English)
   path: string;
 }
 
@@ -198,7 +199,6 @@ export default function TheHeader() {
     <header className="sticky top-0 z-20 flex items-center border-b bg-background px-4">
       <SidebarTrigger />
       <div className="flex w-full container mx-auto py-3 items-center justify-between">
-
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="hidden lg:block">
@@ -233,7 +233,7 @@ export default function TheHeader() {
           {/* Results dropdown */}
           {showResults && filteredPages.length > 0 && (
             <div className="absolute top-full mt-1 w-full md:w-[300px] lg:w-[400px] rounded-md border bg-popover shadow-lg z-50 overflow-hidden">
-              <ul className="py-1" role="listbox">
+              <ul className="py-1">
                 {filteredPages.map((page, idx) => (
                   <li
                     key={page.path}
@@ -260,18 +260,25 @@ export default function TheHeader() {
           )}
 
           {/* No results */}
-          {showResults && searchQuery.trim() !== "" && filteredPages.length === 0 && (
-            <div className="absolute top-full mt-1 w-full md:w-[300px] lg:w-[400px] rounded-md border bg-popover shadow-lg z-50 px-4 py-3 text-sm text-muted-foreground text-right" dir="rtl">
-              لا توجد نتائج لـ &quot;{searchQuery}&quot;
-            </div>
-          )}
+          {showResults &&
+            searchQuery.trim() !== "" &&
+            filteredPages.length === 0 && (
+              <div
+                className="absolute top-full mt-1 w-full md:w-[300px] lg:w-[400px] rounded-md border bg-popover shadow-lg z-50 px-4 py-3 text-sm text-muted-foreground text-right"
+                dir="rtl"
+              >
+                لا توجد نتائج لـ &quot;{searchQuery}&quot;
+              </div>
+            )}
         </div>
 
         {/* Right section */}
         <div className="flex items-center gap-3">
-
           {/* Date & Time */}
-          <div className="hidden items-center gap-2 text-sm text-muted-foreground md:flex" dir="rtl">
+          <div
+            className="hidden items-center gap-2 text-sm text-muted-foreground md:flex"
+            dir="rtl"
+          >
             <Calendar className="h-4 w-4" />
             <span>{formattedDate}</span>
             <Clock className="mr-2 h-4 w-4" />
@@ -281,6 +288,8 @@ export default function TheHeader() {
           {/* Notifications */}
           <NotificationDropdown />
 
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* User dropdown */}
           <DropdownMenu>
@@ -302,7 +311,9 @@ export default function TheHeader() {
                     {currentUser?.email ?? ""}
                   </p>
                   <p className="text-xs text-primary font-medium">
-                    {currentUser?.role === "admin" ? "مسؤول" : currentUser?.role ?? ""}
+                    {currentUser?.role === "admin"
+                      ? "مسؤول"
+                      : (currentUser?.role ?? "")}
                   </p>
                 </div>
               </DropdownMenuLabel>

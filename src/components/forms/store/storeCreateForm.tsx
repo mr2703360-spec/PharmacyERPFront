@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useNavigate, useParams } from "react-router";
 import { medicineSchema, type MedicineForm } from "./scham";
-import { createMedicine, updateMedicine } from "@/apis/medicines";
+import { useCreateMedicine, useUpdateMedicine } from "@/api";
 import { formatDateForInput } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useMedicineCategories } from "@/queries/medicinesCategories";
@@ -65,9 +65,17 @@ export default function MedicineForms({
   const [preview, setPreview] = useState<string | null>(
     idEdit && typeof values?.image === "string" ? values.image : null,
   );
-  const { data: medicineCategories } = useMedicineCategories();
+  const { data: medicineCategoriesResponse } = useMedicineCategories();
+  const medicineCategories =
+    medicineCategoriesResponse?.status === 200
+      ? medicineCategoriesResponse.data?.data || []
+      : [];
 
-  const { data: supplierData } = useSuppliers( );
+  const { data: supplierResponse } = useSuppliers();
+  const suppliers =
+    supplierResponse?.status === 200
+      ? supplierResponse.data?.data || []
+      : [];
 
   const form = useForm<MedicineForm>({
     resolver: zodResolver(medicineSchema) as unknown as Resolver<MedicineForm>,
@@ -104,39 +112,48 @@ export default function MedicineForms({
     }
   }, [values, idEdit, form.reset]);
 
+  const createMutation = useCreateMedicine();
+  const updateMutation = useUpdateMedicine();
+
   const onSubmit: SubmitHandler<MedicineForm> = async (Input: MedicineForm) => {
-    const formData = new FormData();
+    const payload: any = {
+      name: Input.name,
+      category: Input.category,
+      quantity: Input.quantity,
+      price: Input.price,
+      expiryDate: Input.expiryDate ?? "",
+      supplier: Input.supplier,
+      storeStatus: Input.storeStatus,
+    };
 
     if (Input.image && Input.image[0] instanceof File) {
-      formData.append("image", Input.image[0]);
+      payload.image = Input.image[0];
     }
 
-    formData.append("name", Input.name);
-    formData.append("category", Input.category);
-    formData.append("quantity", String(Input.quantity));
-    formData.append("price", String(Input.price));
-    formData.append("expiryDate", Input.expiryDate ?? "");
-    formData.append("supplier", Input.supplier);
-    formData.append("storeStatus", Input.storeStatus);
-
-    if (!idEdit) {
-      await createMedicine(formData as unknown as MedicineType);
-      toast.success("تم إضافة الدواء بنجاح", {
-        description: `تم حفظ ${Input.name} في قاعدة البيانات.`,
-      });
-    } else {
-      if (!id) {
-        toast.error("معرّف الدواء مفقود");
-        return;
+    try {
+      if (!idEdit) {
+        await createMutation.mutateAsync({ data: payload });
+        toast.success("تم إضافة الدواء بنجاح", {
+          description: `تم حفظ ${Input.name} في قاعدة البيانات.`,
+        });
+      } else {
+        if (!id) {
+          toast.error("معرّف الدواء مفقود");
+          return;
+        }
+        await updateMutation.mutateAsync({ id, data: payload });
+        toast.success("تم تحديث بيانات الدواء بنجاح", {
+          description: `تم حفظ ${Input.name} في قاعدة البيانات.`,
+        });
       }
-      await updateMedicine(id, formData as unknown as MedicineType);
-      toast.success("تم تحديث بيانات الدواء بنجاح", {
-        description: `تم حفظ ${Input.name} في قاعدة البيانات.`,
-      });
+      nav("/store");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "حدث خطأ أثناء الحفظ");
     }
-
-    nav("/store");
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6" dir="rtl">
@@ -251,7 +268,7 @@ export default function MedicineForms({
                         <SelectValue placeholder="اختر الفئة" />
                       </SelectTrigger>
                       <SelectContent>
-                        {medicineCategories?.data?.map(
+                        {medicineCategories.map(
                           (category: MedicineCategoriesType) => (
                             <SelectItem
                               key={category._id}
@@ -403,10 +420,8 @@ export default function MedicineForms({
                         <SelectValue placeholder="اختر المورد" />
                       </SelectTrigger>
                       <SelectContent>
-                        {supplierData?.data?.map((supplier: Supplier) => (
+                        {suppliers.map((supplier: any) => (
                           <SelectItem key={supplier._id} value={supplier?.name}>
-                            {" "}
-                            {/* ✅ */}
                             {supplier.name}
                           </SelectItem>
                         ))}
@@ -475,15 +490,17 @@ export default function MedicineForms({
               type="submit"
               form="create-medicine-form"
               className="h-10 gap-2"
+              disabled={isPending}
             >
               <Save className="h-4 w-4" />
-              {idEdit ? "تعديل الدواء" : "إضافة الدواء"}
+              {isPending ? "جارٍ الحفظ..." : idEdit ? "تعديل الدواء" : "إضافة الدواء"}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => nav("/store")}
               className="h-10 gap-2"
+              disabled={isPending}
             >
               <X className="h-4 w-4" />
               إلغاء

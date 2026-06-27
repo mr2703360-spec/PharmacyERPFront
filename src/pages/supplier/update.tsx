@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 
 export default function SupplierUpdate() {
   const { id } = useParams();
-    const { data: supplierData } = useSupplier(id || "");
-  return <SupplierForm id={id} values={supplierData} />;
+    const { data: response } = useSupplier(id || "");
+    const supplierData = response?.status === 200 ? response.data.data : undefined;
+  return <SupplierForm id={id} values={supplierData as any} />;
 }

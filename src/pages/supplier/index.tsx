@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient, } from "@tanstack/react-query";
 import DataTable from "@/components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -19,7 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -33,34 +31,36 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Search,
   Users,
   UserCheck,
   DollarSign,
+  Eye,
 } from "lucide-react";
 import { useSuppliers, useSupplierQueryFilterState } from "@/queries/suppliers";
 import { DeleteDialog } from "@/components/delete-dialog";
+import { ViewItemDialog } from "@/components/view-item-dialog";
 import { toast } from "sonner";
-import { deleteSupplier,} from "@/apis/suppliers";
+import { useDeleteSupplier } from "@/api";
 import { StatusToggleCell } from "@/components/status-toggle-cell";
 import { usePermissions } from "@/hooks/usePermissions";
-
-
-
+import { SearchInput } from "@/components/common/SearchInput";
 
 export default function Supplier() {
   const { can } = usePermissions();
   const { query, setSearch, setPaymentType } = useSupplierQueryFilterState();
-  const { data: suppliersResponse, isLoading, refetch } = useSuppliers();
-  const queryClient = useQueryClient();
+  const { data: suppliersResponse, isLoading } = useSuppliers();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
 
-  const suppliers = suppliersResponse?.data || [];
-  const pagination = suppliersResponse?.pagination;
+  const responseData =
+    suppliersResponse?.status === 200 ? suppliersResponse.data : null;
+  const suppliers = responseData?.data || [];
+  const pagination = responseData?.pagination;
   const totalSuppliers = pagination?.total || suppliers.length;
   const activeSuppliers = suppliers.filter((s) => s.status === "active").length;
   const totalOutstanding = suppliers.reduce(
@@ -68,18 +68,20 @@ export default function Supplier() {
     0,
   );
 
-  const handleDelete = async () => {
+  const deleteSupplierMutation = useDeleteSupplier({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم حذف المورد بنجاح");
+        setDeleteDialogOpen(false);
+        setSelectedSupplier(null);
+      },
+      onError: () => toast.error("فشل حذف المورد"),
+    },
+  });
+
+  const handleDelete = () => {
     if (!selectedSupplier) return;
-    try {
-      await deleteSupplier(selectedSupplier._id);
-      toast.success("تم حذف المورد بنجاح");
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      refetch();
-      setDeleteDialogOpen(false);
-      setSelectedSupplier(null);
-    } catch (error: unknown) {
-      toast.error((error as ApiResponseError).message || "فشل حذف المورد");
-    }
+    deleteSupplierMutation.mutate({ id: selectedSupplier._id });
   };
 
   const columns: ColumnDef<Supplier>[] = [
@@ -121,7 +123,7 @@ export default function Supplier() {
     {
       accessorKey: "status",
       header: "الحالة",
-      cell: ({ row }) => <StatusToggleCell supplier={row.original}  />,
+      cell: ({ row }) => <StatusToggleCell supplier={row.original} />,
     },
     {
       accessorKey: "lastOrder",
@@ -138,7 +140,10 @@ export default function Supplier() {
       header: "الإجراءات",
       cell: ({ row }) => {
         const supplier = row.original;
-        const hasAnyAction = can("update_supplier") || can("delete_supplier");
+        const hasAnyAction =
+          can("view_supplier") ||
+          can("update_supplier") ||
+          can("delete_supplier");
         if (!hasAnyAction) return null;
         return (
           <DropdownMenu>
@@ -151,6 +156,18 @@ export default function Supplier() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {can("view_supplier") && (
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setViewingSupplier(supplier);
+                    setViewDialogOpen(true);
+                  }}
+                >
+                  <Eye className="ml-2 h-4 w-4" />
+                  عرض
+                </DropdownMenuItem>
+              )}
               {can("update_supplier") && (
                 <Link to={`/supplier/${supplier._id}/update`}>
                   <DropdownMenuItem className="cursor-pointer">
@@ -242,15 +259,11 @@ export default function Supplier() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="بحث..."
-                value={query.search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9 w-full sm:w-[250px]"
-              />
-            </div>
+            <SearchInput
+              value={query.search}
+              onChange={setSearch}
+              placeholder="بحث..."
+            />
             {can("create_supplier") && (
               <Link to="/supplier/create">
                 <Button className="gap-2 w-full sm:w-auto">
@@ -263,10 +276,10 @@ export default function Supplier() {
         </CardHeader>
         <CardContent>
           <DataTable
-            columns={columns}
+            columns={columns as any}
             data={suppliers}
             loading={isLoading}
-            totalPages={suppliersResponse?.pagination?.totalPages || 1}
+            totalPages={responseData?.pagination?.totalPages || 1}
           />
         </CardContent>
       </Card>
@@ -278,7 +291,27 @@ export default function Supplier() {
         title="حذف مورد"
         itemName={selectedSupplier?.name}
         onConfirm={handleDelete}
-        isLoading={false}
+        isLoading={deleteSupplierMutation.isPending}
+      />
+
+      <ViewItemDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        item={viewingSupplier || {}}
+        title={`تفاصيل المورد: ${viewingSupplier?.name || ""}`}
+        labels={{
+          name: "الاسم",
+          phone: "الهاتف",
+          email: "البريد الإلكتروني",
+          address: "العنوان",
+          paymentType: "نوع الدفع",
+          status: "الحالة",
+          outstandingBalance: "المستحقات",
+          notes: "ملاحظات",
+          lastOrder: "آخر طلب",
+          createdAt: "تاريخ الإنشاء",
+          updatedAt: "تاريخ التحديث",
+        }}
       />
     </div>
   );

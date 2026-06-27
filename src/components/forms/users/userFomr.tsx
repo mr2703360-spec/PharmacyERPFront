@@ -39,7 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useParams } from "react-router";
 import { UserSchema, type UserForm , ROLES } from "./scham.ts";
-import { createUser, updateUser } from "@/apis/users.ts";
+import { useCreateUser, useUpdateUser } from "@/api";
 import { cn } from "@/lib/utils";
 
 // --- Permission Grouping ---
@@ -99,7 +99,10 @@ export default function UserFormComponent({
 }: Props) {
   const nav = useNavigate();
   const { id } = useParams();
-  const [isPending, setIsPending] = useState(false);
+  
+  const createMutation = useCreateUser();
+  const updateMutation = useUpdateUser();
+  const isPending = createMutation.isPending || updateMutation.isPending;
   const [preview, setPreview] = useState<string | null>(
     (defaultValues?.image as string) || null
   );
@@ -126,37 +129,35 @@ export default function UserFormComponent({
   };
 
   const handleSubmit: SubmitHandler<UserForm> = async (data) => {
-    setIsPending(true);
     try {
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("email", data.email);
-      if (data.password) formData.append("password", data.password);
-      formData.append("role", data.role);
-      formData.append("isActive", String(data.isActive));
+      const payload: any = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        isActive: String(data.isActive),
+        permissions: data.permissions,
+      };
       
-      data.permissions.forEach((p) => {
-        formData.append("permissions", p);
-      });
+      if (data.password) {
+        payload.password = data.password;
+      }
 
       if (data.image?.[0]) {
-        formData.append("image", data.image[0]);
+        payload.image = data.image[0];
       }
 
       if (mode === "create") {
-        await createUser(formData as any);
+        await createMutation.mutateAsync({ data: payload });
         toast.success("تم إضافة المستخدم بنجاح");
       } else {
-        await updateUser(id as string, formData as any);
+        await updateMutation.mutateAsync({ id: id as string, data: payload });
         toast.success("تم تعديل بيانات المستخدم بنجاح");
       }
       nav(-1);
     } catch (error: any) {
       console.error(error);
-      const errorMessage = error?.data?.message || error?.message || "حدث خطأ ما. حاول مجددًا.";
+      const errorMessage = error?.response?.data?.message || error?.message || "حدث خطأ ما. حاول مجددًا.";
       toast.error(errorMessage);
-    } finally {
-      setIsPending(false);
     }
   };
 

@@ -138,7 +138,7 @@ export default function DataTable<TData, TValue>({
                     return (
                       <TableHead
                         key={header.id}
-                        className="py-4 bg-gray-100  text-center"
+                        className="py-4 bg-muted/50 text-center"
                       >
                         {header.isPlaceholder
                           ? null
@@ -159,7 +159,7 @@ export default function DataTable<TData, TValue>({
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                     className={cn(
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50",
+                      index % 2 === 0 ? "bg-background" : "bg-muted/20",
                       index === table.getRowModel().rows.length - 1 &&
                         "border-b-0"
                     )}
@@ -206,7 +206,7 @@ export default function DataTable<TData, TValue>({
         </div>
         <ScrollBar
           orientation="horizontal"
-          className="h-3 bg-gray-100 rounded-full"
+          className="h-3 bg-secondary rounded-full"
         />
       </ScrollArea>
 

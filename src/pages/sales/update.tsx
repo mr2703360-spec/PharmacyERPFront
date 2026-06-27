@@ -5,7 +5,7 @@ import { useSale } from "@/queries/sales";
 
 export default function SalesUpdate() {
   const { id } = useParams<{ id: string }>();
-  const { value: sale, loading: isLoading, error } = useSale(id || "");
+  const { data: sale, isLoading, error } = useSale(id || "");
 
 
 if (isLoading) {
@@ -15,6 +15,9 @@ if (isLoading) {
   if (error || !sale) {
     return <div className="p-8 text-center text-red-500" dir="rtl">فشل في تحميل بيانات المبيعة</div>;
   }
-  return <SaleForm id={id}  initialData={sale} isEdit={true} />;
+  
+  const saleData = sale?.status === 200 ? sale.data.data : undefined;
+  
+  return <SaleForm id={id}  initialData={saleData as any} isEdit={true} />;
 }
 

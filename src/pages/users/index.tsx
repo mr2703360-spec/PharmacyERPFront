@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   MoreHorizontal,
   Pencil,
   Trash2,
   Plus,
-  Search,
   Package,
   Eye,
 } from "lucide-react";
@@ -31,15 +30,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/common/SearchInput";
 import { DeleteDialog } from "@/components/delete-dialog";
 import { ViewItemDialog } from "@/components/view-item-dialog"; // adjust path if needed
+import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 
 import { useUsers, useUsersQueryFilterState } from "@/queries/users";
-import { deleteMedicine } from "@/apis/medicines";
+import { useDeleteUser } from "@/api";
 import { filterData } from "@/lib/utils";
-
-
 
 export default function Index() {
   const { can } = usePermissions();
@@ -47,7 +45,9 @@ export default function Index() {
   const { data: usersResponse, refetch, isLoading } = useUsers();
   const queryClient = useQueryClient();
 
-  const usersData = usersResponse?.data || [] as UserType[];
+  const responseData =
+    usersResponse?.status === 200 ? usersResponse.data : null;
+  const usersData = (responseData?.data || []) as UserType[];
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -57,31 +57,28 @@ export default function Index() {
 
   // View dialog state
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingMedicine, setViewingMedicine] = useState<UserType | null>(
-    null,
-  );
+  const [viewingMedicine, setViewingMedicine] = useState<UserType | null>(null);
 
   // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await deleteMedicine(id);
-    },
-    onSuccess: () => {
-      toast.success("تم حذف المستخدم بنجاح");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      setDeleteDialogOpen(false);
-      setSelectedMedicine(null);
-      refetch();
-    },
-    onError: (error) => {
-      console.error(error);
-      toast.error("فشل حذف المستخدم");
+  const deleteMutation = useDeleteUser({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم حذف المستخدم بنجاح");
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+        setDeleteDialogOpen(false);
+        setSelectedMedicine(null);
+        refetch();
+      },
+      onError: (error) => {
+        console.error(error);
+        toast.error("فشل حذف المستخدم");
+      },
     },
   });
 
   const handleDeleteConfirm = () => {
     if (selectedMedicine) {
-      deleteMutation.mutate(selectedMedicine._id);
+      deleteMutation.mutate({ id: selectedMedicine._id });
     }
   };
 
@@ -94,8 +91,6 @@ export default function Index() {
     setViewingMedicine(user);
     setViewDialogOpen(true);
   };
-
- 
 
   const columns: ColumnDef<UserType>[] = [
     {
@@ -111,8 +106,9 @@ export default function Index() {
       header: "الحالة",
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 rounded-md ${row.original.isActive ? "bg-green-500" : "bg-red-500"
-            } text-white text-xs font-medium`}
+          className={`px-2 py-1 rounded-md ${
+            row.original.isActive ? "bg-green-500" : "bg-red-500"
+          } text-white text-xs font-medium`}
         >
           {row.original.isActive ? "نشط" : "غير نشط"}
         </span>
@@ -122,11 +118,13 @@ export default function Index() {
       accessorKey: "image",
       header: "الصورة",
       cell: ({ row }) => (
-        <img
-          src={row.original.image}
-          alt={row.original.name}
-          className="w-16 h-16 rounded-md object-cover"
-        />
+        <ImagePreviewDialog src={row.original.image} alt={row.original.name}>
+          <img
+            src={row.original.image}
+            alt={row.original.name}
+            className="w-16 h-16 rounded-md object-cover"
+          />
+        </ImagePreviewDialog>
       ),
     },
     {
@@ -139,9 +137,7 @@ export default function Index() {
       cell: ({ row }) => {
         const user = row.original;
         const hasAnyAction =
-          can("view_users") ||
-          can("update_user") ||
-          can("delete_user");
+          can("view_users") || can("update_user") || can("delete_user");
         if (!hasAnyAction) return null;
         return (
           <DropdownMenu>
@@ -190,7 +186,8 @@ export default function Index() {
   const filteredData = filterData(usersData, query.search, [
     "name",
     "email",
-    "phone",
+    "isActive",
+    "role",
   ]);
 
   return (
@@ -205,9 +202,7 @@ export default function Index() {
               </CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-          
           </Card>
-       
         </div>
 
         {/* Main Table Card */}
@@ -217,20 +212,14 @@ export default function Index() {
               <CardTitle className="text-2xl font-bold">
                 إدارة المستخدمين
               </CardTitle>
-              <CardDescription>
-                إدارة وتتبع جميع المستخدمين
-              </CardDescription>
+              <CardDescription>إدارة وتتبع جميع المستخدمين</CardDescription>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="بحث..."
-                  value={query.search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pr-9 w-full sm:w-[250px]"
-                />
-              </div>
+              <SearchInput
+                value={query.search}
+                onChange={setSearch}
+                placeholder="بحث..."
+              />
               {can("create_user") && (
                 <Link to="/users/create">
                   <Button className="gap-2">
@@ -246,7 +235,7 @@ export default function Index() {
               columns={columns}
               data={filteredData || []}
               loading={isLoading}
-              totalPages={usersResponse?.pagination?.totalPages || 1} 
+              totalPages={responseData?.pagination?.totalPages || 1}
             />
           </CardContent>
         </Card>

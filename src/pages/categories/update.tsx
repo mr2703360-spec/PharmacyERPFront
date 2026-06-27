@@ -6,5 +6,5 @@ export default function UpdateCategory() {
   const { id } = useParams();
     const {data,isLoading}=useMedicineCategoryById(id ?? "" )
   
-  return <CategoryForm id={id} initialData={data} isEdit={true} isLoading={isLoading} />
+  return <CategoryForm id={id} initialData={data as any} isEdit={true} isLoading={isLoading} />
 }

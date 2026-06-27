@@ -1,13 +1,21 @@
-import { getPurchase, getPurchases } from "@/apis/purchases";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-import { useAsyncRetry } from "react-use";
+import {
+  useGetPurchases,
+  useGetPurchaseById,
+  useCreatePurchase,
+  useUpdatePurchase,
+  useDeletePurchase,
+  getGetPurchasesQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { CreatePurchaseRequest, UpdatePurchaseRequest, GetPurchasesPaymentStatus } from "@/api";
 
 export interface PurchasesQueryParams {
-  search: string;
-  page: number;
-  limit: number;
-  paymentStatus: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  paymentStatus?: string;
 }
 
 export const usePurchasesQueryFilterState = () => {
@@ -19,7 +27,7 @@ export const usePurchasesQueryFilterState = () => {
   });
 
   return {
-    query: query as PurchasesQueryParams,
+    query: query as Required<PurchasesQueryParams>,
     setQuery,
     setSearch: (search: string) => setQuery({ search, page: 1 }),
     setPage: (page: number) => setQuery({ page }),
@@ -29,31 +37,57 @@ export const usePurchasesQueryFilterState = () => {
   };
 };
 
-export const buildPurchasesQueryString = (
-  params: Partial<PurchasesQueryParams>
-): string => {
-  const searchParams = new URLSearchParams();
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", params.page.toString());
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-  if (params.paymentStatus && params.paymentStatus !== "all")
-    searchParams.set("paymentStatus", params.paymentStatus);
-  return searchParams.toString();
-};
-
 export const usePurchases = () => {
   const { query } = usePurchasesQueryFilterState();
-  const queryString = buildPurchasesQueryString(query);
-  return useQuery({
-    queryKey: ["purchases", query],
-    queryFn: () => getPurchases(queryString),
+  return useGetPurchases({
+    search: query.search || undefined,
+    page: query.page,
+    limit: query.limit,
+    paymentStatus: query.paymentStatus !== "all" ? (query.paymentStatus as GetPurchasesPaymentStatus) : undefined,
   });
 };
 
 export const usePurchase = (id: string) => {
-  return useAsyncRetry(async () => {
-    if (!id) return null;
-    const result = await getPurchase(id);
-    return result;
-  }, [id]);
+  return useGetPurchaseById(id, { query: { enabled: !!id } });
 };
+
+export const useCreatePurchaseAction = () => {
+  const queryClient = useQueryClient();
+  return useCreatePurchase({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetPurchasesQueryKey() });
+        toast.success("تم إنشاء أمر الشراء بنجاح");
+      },
+      onError: () => toast.error("فشل في إنشاء أمر الشراء"),
+    },
+  });
+};
+
+export const useUpdatePurchaseAction = () => {
+  const queryClient = useQueryClient();
+  return useUpdatePurchase({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetPurchasesQueryKey() });
+        toast.success("تم تحديث أمر الشراء بنجاح");
+      },
+      onError: () => toast.error("فشل في تحديث أمر الشراء"),
+    },
+  });
+};
+
+export const useDeletePurchaseAction = () => {
+  const queryClient = useQueryClient();
+  return useDeletePurchase({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetPurchasesQueryKey() });
+        toast.success("تم حذف أمر الشراء بنجاح");
+      },
+      onError: () => toast.error("فشل في حذف أمر الشراء"),
+    },
+  });
+};
+
+export type { CreatePurchaseRequest, UpdatePurchaseRequest };

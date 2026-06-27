@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/select";
 import { useNavigate } from "react-router";
 import { supplierSchema, type SupplierForm } from "./sham";
-import { createSupplier, updateSupplier } from "@/apis/suppliers";
+import { useCreateSupplier, useUpdateSupplier } from "@/api";
 import { useEffect } from "react";
 
 interface SupplierFormsProps {
@@ -86,20 +86,30 @@ export default function SupplierForm({ idEdit=false, id, values }: Readonly<Supp
       }
     }, [values, form]);
 
+  const createMutation = useCreateSupplier();
+  const updateMutation = useUpdateSupplier();
+
   const onSubmit: SubmitHandler<SupplierForm> = async (data) => {
-    if (!idEdit) {
-      await createSupplier(data as any);
-      toast.success("تم تحديث معلومات المورد بنجاح", {
-        description: `تم تحديث ${data.name} في قاعدة البيانات.`,
-      });
-    } else {
-      await updateSupplier(id || "", data as any);
-      toast.success("تم تحديث معلومات المورد بنجاح", {
-        description: `تم تحديث ${data.name} في قاعدة البيانات.`,
-      });
+    try {
+      if (!idEdit) {
+        await createMutation.mutateAsync({ data: data as any });
+        toast.success("تمت إضافة المورد بنجاح", {
+          description: `تم إضافة ${data.name} في قاعدة البيانات.`,
+        });
+      } else {
+        await updateMutation.mutateAsync({ id: id || "", data: data as any });
+        toast.success("تم تحديث معلومات المورد بنجاح", {
+          description: `تم تحديث ${data.name} في قاعدة البيانات.`,
+        });
+      }
+      nav("/supplier");
+    } catch (error) {
+      toast.error("حدث خطأ أثناء حفظ معلومات المورد");
+      console.error(error);
     }
-    nav("/supplier");
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6" dir="rtl">
@@ -458,15 +468,16 @@ export default function SupplierForm({ idEdit=false, id, values }: Readonly<Supp
           </CardContent>
 
           <CardFooter className="flex justify-end gap-2 border-t p-6">
-            <Button type="submit" form="supplier-form" className="h-10 gap-2">
+            <Button type="submit" form="supplier-form" className="h-10 gap-2" disabled={isPending}>
               <Save className="h-4 w-4" />
-              {id ? "تحديث المورد" : "إضافة المورد"}
+              {isPending ? "جارٍ الحفظ..." : id ? "تحديث المورد" : "إضافة المورد"}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => nav("/supplier")}
               className="h-10 gap-2"
+              disabled={isPending}
             >
               <X className="h-4 w-4" />
               إلغاء

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect} from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, type SubmitHandler } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -21,9 +21,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  createMedicineCategory,
-  updateMedicineCategory,
-} from "@/apis/medicinesCategories";
+  useCreateMedicineCategory,
+  useUpdateMedicineCategory,
+} from "@/api";
 import { toast } from "sonner";
 import { categorySchema, type CategoryFormValues } from "./schema";
 
@@ -42,7 +42,6 @@ export default function CategoryForm({
   isLoading,
 }: CategoryFormProps) {
   const navigate = useNavigate();
-  const [isPending, setIsPending] = useState(false);
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -61,25 +60,39 @@ export default function CategoryForm({
     }
   }, [initialData, form]);
 
-  const onSubmit: SubmitHandler<CategoryFormValues> = async (data) => {
-    try {
-      if (isEdit && id) {
-        await updateMedicineCategory(id, data );
-        toast.success("تم تحديث التصنيف بنجاح");
-      } else {
-        await createMedicineCategory(data);
+  const createCategoryMutation = useCreateMedicineCategory({
+    mutation: {
+      onSuccess: () => {
         toast.success("تم إضافة التصنيف بنجاح");
-      }
-      navigate("/categories");
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        isEdit
-          ? "حدث خطأ أثناء تحديث التصنيف. حاول مجدداً."
-          : "حدث خطأ أثناء إضافة التصنيف. حاول مجدداً.",
-      );
-    } finally {
-      setIsPending(false);
+        navigate("/categories");
+      },
+      onError: (error: any) => {
+        console.error(error);
+        toast.error("حدث خطأ أثناء إضافة التصنيف. حاول مجدداً.");
+      },
+    },
+  });
+
+  const updateCategoryMutation = useUpdateMedicineCategory({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم تحديث التصنيف بنجاح");
+        navigate("/categories");
+      },
+      onError: (error: any) => {
+        console.error(error);
+        toast.error("حدث خطأ أثناء تحديث التصنيف. حاول مجدداً.");
+      },
+    },
+  });
+
+  const isPending = createCategoryMutation.isPending || updateCategoryMutation.isPending;
+
+  const onSubmit: SubmitHandler<CategoryFormValues> = (data) => {
+    if (isEdit && id) {
+      updateCategoryMutation.mutate({ id, data });
+    } else {
+      createCategoryMutation.mutate({ data });
     }
   };
 

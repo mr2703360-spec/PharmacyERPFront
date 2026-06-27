@@ -101,7 +101,7 @@ export function NotificationDropdown() {
         <DropdownMenuSeparator />
         
         <ScrollArea className="h-[300px] md:h-[400px]">
-          {notifications.length === 0 ? (
+          {notifications?.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center space-y-3">
               <div className="bg-muted p-3 rounded-full">
                 <Bell className="h-6 w-6 opacity-50" />
@@ -110,7 +110,7 @@ export function NotificationDropdown() {
             </div>
           ) : (
             <div className="flex flex-col">
-              {notifications.map((notification) => (
+              {notifications?.map((notification: any) => (
                 <div 
                   key={notification._id}
                   className={`flex gap-3 p-3 border-b last:border-0 transition-colors ${

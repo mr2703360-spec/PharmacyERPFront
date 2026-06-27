@@ -1,8 +1,15 @@
-import { getMedicineCategory, getMedicinesCategories } from "@/apis/medicinesCategories";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-
-// import { useAsyncRetry } from "react-use";
+import {
+  useGetMedicineCategories,
+  useGetMedicineCategoryById,
+  useCreateMedicineCategory,
+  useUpdateMedicineCategory,
+  useDeleteMedicineCategory,
+  getGetMedicineCategoriesQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { CreateCategoryRequest } from "@/api";
 
 export interface MedicineCategoriesQueryParams {
   search: string;
@@ -27,31 +34,56 @@ export const useMedicineCategoriesQueryFilterState = () => {
   };
 };
 
-export const buildQueryString = (
-  params: Partial<MedicineCategoriesQueryParams>,
-): string => {
-  const searchParams = new URLSearchParams();
-
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", params.page.toString());
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-
-  return searchParams.toString();
-};
-
 export const useMedicineCategories = () => {
   const { query } = useMedicineCategoriesQueryFilterState();
-  const queryString = buildQueryString(query);
-  return useQuery({
-    queryKey: ["medicineCategories", query],
-    queryFn: () => getMedicinesCategories(queryString),
+  return useGetMedicineCategories({
+    search: query.search || undefined,
+    page: query.page,
+    limit: query.limit,
   });
 };
-
 
 export const useMedicineCategoryById = (id: string) => {
-  return useQuery({
-    queryKey: ["medicineCategory", id],
-    queryFn: () => getMedicineCategory(id),
+  return useGetMedicineCategoryById(id, { query: { enabled: !!id } });
+};
+
+export const useCreateMedicineCategoryAction = () => {
+  const queryClient = useQueryClient();
+  return useCreateMedicineCategory({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicineCategoriesQueryKey() });
+        toast.success("تم إضافة التصنيف بنجاح");
+      },
+      onError: () => toast.error("فشل في إضافة التصنيف"),
+    },
   });
 };
+
+export const useUpdateMedicineCategoryAction = () => {
+  const queryClient = useQueryClient();
+  return useUpdateMedicineCategory({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicineCategoriesQueryKey() });
+        toast.success("تم تحديث التصنيف بنجاح");
+      },
+      onError: () => toast.error("فشل في تحديث التصنيف"),
+    },
+  });
+};
+
+export const useDeleteMedicineCategoryAction = () => {
+  const queryClient = useQueryClient();
+  return useDeleteMedicineCategory({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicineCategoriesQueryKey() });
+        toast.success("تم حذف التصنيف بنجاح");
+      },
+      onError: () => toast.error("فشل في حذف التصنيف"),
+    },
+  });
+};
+
+export type { CreateCategoryRequest };

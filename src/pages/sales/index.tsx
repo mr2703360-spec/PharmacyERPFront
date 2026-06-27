@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -18,16 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Eye, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DeleteDialog } from "@/components/delete-dialog";
 import { ViewItemDialog } from "@/components/view-item-dialog";
 import { useSales, useSalesQueryFilterState } from "@/queries/sales";
-import { deleteSale } from "@/apis/sales";
+import { useDeleteSale } from "@/api";
 import { filterData } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
+import { SearchInput } from "@/components/common/SearchInput";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("ar-EG", {
@@ -69,28 +69,28 @@ export default function SalesPage() {
   const [viewingSale, setViewingSale] = useState<SaleRow | null>(null);
 
   // Client-side payment method filter
-  const [paymentFilter, setPaymentFilter] = useState<string>(ALL_PAYMENT_METHODS);
+  const [paymentFilter, setPaymentFilter] =
+    useState<string>(ALL_PAYMENT_METHODS);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await deleteSale(id);
-    },
-    onSuccess: () => {
-      toast.success("تم حذف المبيعة بنجاح");
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      setDeleteDialogOpen(false);
-      setSelectedSale(null);
-      refetch();
-    },
-    onError: (error) => {
-      console.error(error);
-      toast.error("فشل حذف المبيعة");
+  const deleteMutation = useDeleteSale({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم حذف المبيعة بنجاح");
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+        setDeleteDialogOpen(false);
+        setSelectedSale(null);
+        refetch();
+      },
+      onError: (error) => {
+        console.error(error);
+        toast.error("فشل حذف المبيعة");
+      },
     },
   });
 
   const handleDeleteConfirm = () => {
     if (selectedSale) {
-      deleteMutation.mutate(selectedSale._id);
+      deleteMutation.mutate({ id: selectedSale._id });
     }
   };
 
@@ -109,8 +109,8 @@ export default function SalesPage() {
     setPaymentFilter(ALL_PAYMENT_METHODS);
   };
 
-
-  const salesData = salesResponse?.data || [];
+  const salesData =
+    salesResponse?.status === 200 ? salesResponse.data?.data || [] : [];
 
   // Apply client-side search + payment method filter
   const searchFiltered = filterData(salesData, query.search, [
@@ -124,7 +124,8 @@ export default function SalesPage() {
       ? searchFiltered
       : searchFiltered.filter((s) => s.paymentMethod === paymentFilter);
 
-  const hasActiveFilters = query.search !== "" || paymentFilter !== ALL_PAYMENT_METHODS;
+  const hasActiveFilters =
+    query.search !== "" || paymentFilter !== ALL_PAYMENT_METHODS;
 
   const columns: ColumnDef<SaleRow>[] = [
     {
@@ -197,9 +198,7 @@ export default function SalesPage() {
       cell: ({ row }) => {
         const sale = row.original;
         const hasAnyAction =
-          can("view_sale") ||
-          can("update_sale") ||
-          can("delete_sale");
+          can("view_sale") || can("update_sale") || can("delete_sale");
         if (!hasAnyAction) return null;
         return (
           <div className="flex items-center justify-end gap-2">
@@ -239,14 +238,12 @@ export default function SalesPage() {
   return (
     <>
       <div className="container mx-auto py-8 px-4 md:px-6" dir="rtl">
-        <Card className="shadow-sm border border-gray-100 bg-white">
+        <Card className="shadow-sm">
           <CardHeader className="flex flex-col gap-4 pb-4">
             {/* Title row */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-2xl font-bold">
-                  المبيعات
-                </CardTitle>
+                <CardTitle className="text-2xl font-bold">المبيعات</CardTitle>
                 <CardDescription>
                   عرض جميع فواتير المبيعات وطرق الدفع.
                 </CardDescription>
@@ -264,15 +261,12 @@ export default function SalesPage() {
             {/* Search & Filter row */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
               {/* Search input */}
-              <div className="relative flex-1 sm:max-w-xs">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="بحث برقم الفاتورة، العميل، الدواء..."
-                  value={query.search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pr-9"
-                />
-              </div>
+              <SearchInput
+                value={query.search}
+                onChange={setSearch}
+                placeholder="بحث برقم الفاتورة، العميل، الدواء..."
+                className="sm:max-w-xs"
+              />
 
               {/* Payment method filter */}
               <Select value={paymentFilter} onValueChange={setPaymentFilter}>
@@ -307,10 +301,14 @@ export default function SalesPage() {
 
           <CardContent>
             <DataTable
-              columns={columns}
+              columns={columns as any}
               data={filteredData}
               loading={isLoading}
-              totalPages={salesResponse?.pagination?.totalPages || 0}
+              totalPages={
+                salesResponse?.status === 200
+                  ? salesResponse.data?.pagination?.totalPages || 0
+                  : 0
+              }
             />
           </CardContent>
         </Card>

@@ -16,7 +16,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useNavigate } from "react-router";
 import { saleSchema, type SaleForm } from "./schema";
-import { createSale, updateSale } from "@/apis/sales";
+import { useCreateSale, useUpdateSale } from "@/api";
 
 interface SaleFormProps {
   id?: string;
@@ -100,32 +100,33 @@ export default function SaleFormComponent({
   const unitPrice = form.watch("unitPrice");
   const computedTotal = (Number(quantity) || 0) * (Number(unitPrice) || 0);
 
-  const createMutation = useMutation({
-    mutationFn: createSale,
-    onSuccess: () => {
-      toast.success("تم إنشاء عملية بيع جديدة");
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      nav("/sales");
-    },
-    onError: (error) => {
-      toast.error("حدث خطأ أثناء حفظ عملية البيع");
-      console.error(error);
-    },
+  const createMutation = useCreateSale({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم إنشاء عملية بيع جديدة");
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+        nav("/sales");
+      },
+      onError: (error) => {
+        toast.error("حدث خطأ أثناء حفظ عملية البيع");
+        console.error(error);
+      },
+    }
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateSale(id, data),
-    onSuccess: () => {
-      toast.success("تم تعديل عملية البيع");
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["sale", id] });
-      nav("/sales");
-    },
-    onError: (error) => {
-      toast.error("حدث خطأ أثناء تعديل عملية البيع");
-      console.error(error);
-    },
+  const updateMutation = useUpdateSale({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم تعديل عملية البيع");
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+        queryClient.invalidateQueries({ queryKey: ["sale", id] });
+        nav("/sales");
+      },
+      onError: (error) => {
+        toast.error("حدث خطأ أثناء تعديل عملية البيع");
+        console.error(error);
+      },
+    }
   });
 
   const onSubmit: SubmitHandler<SaleForm> = (data) => {
@@ -143,7 +144,7 @@ export default function SaleFormComponent({
     if (id && isEdit) {
       updateMutation.mutate({ id, data: payload as any });
     } else {
-      createMutation.mutate(payload as any);
+      createMutation.mutate({ data: payload as any });
     }
   };
 

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/atoms";
-import { updateUser } from "@/apis/users";
+import { useUpdateUser } from "@/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,26 +75,30 @@ export default function PharmacyProfilePage() {
   };
 
 
+  const updateUserMutation = useUpdateUser();
+
   async function onSubmit(data: ProfileFormValues) {
     if (!currentUser?._id) return;
     
     setIsPending(true);
     try {
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("email", data.email);
-      if (data.password) formData.append("password", data.password);
+      const updateData: any = {
+        name: data.name,
+        email: data.email,
+      };
+      if (data.password) updateData.password = data.password;
       
       if (data.avatar instanceof File) {
-        formData.append("image", data.avatar);
-      } else if (data.avatar === null && !previewUrl) {
-        // Handle image removal if necessary (depends on backend)
+        updateData.image = data.avatar;
       }
 
-      const updatedUser = await updateUser(currentUser._id, formData as any);
+      const response = await updateUserMutation.mutateAsync({ 
+        id: currentUser._id, 
+        data: updateData 
+      });
       
       // Update local state (Jotai) to reflect changes immediately across the app
-      setCurrentUser(updatedUser as any);
+      setCurrentUser(response.data as any);
       
       toast.success("تم تحديث الملف الشخصي بنجاح");
       reset({ ...data, password: "", avatar: null });

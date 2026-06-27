@@ -1,8 +1,15 @@
-import { getUser, getUsers } from "@/apis/users";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-
-import { useAsyncRetry } from "react-use";
+import {
+  useGetUsers,
+  useGetUserById,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
+  getGetUsersQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { CreateUserRequest, UpdateUserRequest } from "@/api";
 
 export interface UsersQueryParams {
   search: string;
@@ -27,28 +34,56 @@ export const useUsersQueryFilterState = () => {
   };
 };
 
-export const buildQueryString = (params: Partial<UsersQueryParams>): string => {
-  const searchParams = new URLSearchParams();
-
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", params.page.toString());
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-
-  return searchParams.toString();
-};
-
 export const useUsers = () => {
   const { query } = useUsersQueryFilterState();
-  const queryString = buildQueryString(query);
-  return useQuery({
-    queryKey: ["users", query],
-    queryFn: () => getUsers(queryString),
+  return useGetUsers({
+    search: query.search || undefined,
+    page: query.page,
+    limit: query.limit,
   });
 };
 
 export const useUser = (id: string) => {
-  return useAsyncRetry(async () => {
-    const result = await getUser(id);
-    return result;
+  return useGetUserById(id, { query: { enabled: !!id } });
+};
+
+export const useCreateUserAction = () => {
+  const queryClient = useQueryClient();
+  return useCreateUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
+        toast.success("تم إضافة المستخدم بنجاح");
+      },
+      onError: () => toast.error("فشل في إضافة المستخدم"),
+    },
   });
 };
+
+export const useUpdateUserAction = () => {
+  const queryClient = useQueryClient();
+  return useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
+        toast.success("تم تحديث المستخدم بنجاح");
+      },
+      onError: () => toast.error("فشل في تحديث المستخدم"),
+    },
+  });
+};
+
+export const useDeleteUserAction = () => {
+  const queryClient = useQueryClient();
+  return useDeleteUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
+        toast.success("تم حذف المستخدم بنجاح");
+      },
+      onError: () => toast.error("فشل في حذف المستخدم"),
+    },
+  });
+};
+
+export type { CreateUserRequest, UpdateUserRequest };

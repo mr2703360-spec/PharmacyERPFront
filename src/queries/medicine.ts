@@ -1,13 +1,20 @@
-import { getMedicine, getMedicines } from "@/apis/medicines";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-
-import { useAsyncRetry } from "react-use";
+import {
+  useGetMedicines,
+  useGetMedicineById,
+  useCreateMedicine,
+  useUpdateMedicine,
+  useDeleteMedicine,
+  getGetMedicinesQueryKey,
+} from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { CreateMedicineRequest, UpdateMedicineRequest } from "@/api";
 
 export interface MedicineQueryParams {
-  search: string;
-  page: number;
-  limit: number;
+  search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export const useMedicineQueryFilterState = () => {
@@ -18,7 +25,7 @@ export const useMedicineQueryFilterState = () => {
   });
 
   return {
-    query: query as MedicineQueryParams,
+    query: query as Required<MedicineQueryParams>,
     setQuery,
     setSearch: (search: string) => setQuery({ search, page: 1 }),
     setPage: (page: number) => setQuery({ page }),
@@ -27,31 +34,56 @@ export const useMedicineQueryFilterState = () => {
   };
 };
 
-export const buildQueryString = (
-  params: Partial<MedicineQueryParams>,
-): string => {
-  const searchParams = new URLSearchParams();
-
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", params.page.toString());
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-
-  return searchParams.toString();
-};
-
 export const useMedicines = () => {
   const { query } = useMedicineQueryFilterState();
-  const queryString = buildQueryString(query);
-  return useQuery({
-    queryKey: ["medicines", query],
-    queryFn: () => getMedicines(queryString),
+  return useGetMedicines({
+    search: query.search || undefined,
+    page: query.page,
+    limit: query.limit,
   });
 };
 
 export const useMedicine = (id: string) => {
-  return useAsyncRetry(async () => {
-    if (!id) return null;
-    const result = await getMedicine(id);
-    return result;
+  return useGetMedicineById(id, { query: { enabled: !!id } });
+};
+
+export const useCreateMedicineAction = () => {
+  const queryClient = useQueryClient();
+  return useCreateMedicine({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicinesQueryKey() });
+        toast.success("تم إضافة الدواء بنجاح");
+      },
+      onError: () => toast.error("فشل في إضافة الدواء"),
+    },
   });
 };
+
+export const useUpdateMedicineAction = () => {
+  const queryClient = useQueryClient();
+  return useUpdateMedicine({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicinesQueryKey() });
+        toast.success("تم تحديث الدواء بنجاح");
+      },
+      onError: () => toast.error("فشل في تحديث الدواء"),
+    },
+  });
+};
+
+export const useDeleteMedicineAction = () => {
+  const queryClient = useQueryClient();
+  return useDeleteMedicine({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMedicinesQueryKey() });
+        toast.success("تم حذف الدواء بنجاح");
+      },
+      onError: () => toast.error("فشل في حذف الدواء"),
+    },
+  });
+};
+
+export type { CreateMedicineRequest, UpdateMedicineRequest };

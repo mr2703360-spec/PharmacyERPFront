@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -18,15 +17,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Eye, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DeleteDialog } from "@/components/delete-dialog";
 import { ViewItemDialog } from "@/components/view-item-dialog";
-import { usePurchases, usePurchasesQueryFilterState } from "@/queries/purchases";
-import { deletePurchase } from "@/apis/purchases";
+import {
+  usePurchases,
+  usePurchasesQueryFilterState,
+} from "@/queries/purchases";
+import { useDeletePurchase } from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
+import { SearchInput } from "@/components/common/SearchInput";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,29 +67,32 @@ export default function PurchasesPage() {
   const queryClient = useQueryClient();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRow | null>(null);
+  const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRow | null>(
+    null,
+  );
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingPurchase, setViewingPurchase] = useState<PurchaseRow | null>(null);
+  const [viewingPurchase, setViewingPurchase] = useState<PurchaseRow | null>(
+    null,
+  );
 
   // ── Delete mutation ──
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await deletePurchase(id);
-    },
-    onSuccess: () => {
-      toast.success("تم حذف فاتورة الشراء بنجاح");
-      queryClient.invalidateQueries({ queryKey: ["purchases"] });
-      setDeleteDialogOpen(false);
-      setSelectedPurchase(null);
-      refetch();
-    },
-    onError: () => {
-      toast.error("فشل حذف فاتورة الشراء");
+  const deleteMutation = useDeletePurchase({
+    mutation: {
+      onSuccess: () => {
+        toast.success("تم حذف فاتورة الشراء بنجاح");
+        queryClient.invalidateQueries({ queryKey: ["purchases"] });
+        setDeleteDialogOpen(false);
+        setSelectedPurchase(null);
+        refetch();
+      },
+      onError: () => {
+        toast.error("فشل حذف فاتورة الشراء");
+      },
     },
   });
 
   const handleDeleteConfirm = () => {
-    if (selectedPurchase) deleteMutation.mutate(selectedPurchase._id);
+    if (selectedPurchase) deleteMutation.mutate({ id: selectedPurchase._id });
   };
 
   const openDeleteDialog = (purchase: PurchaseRow) => {
@@ -102,7 +108,9 @@ export default function PurchasesPage() {
   const hasActiveFilters =
     query.search !== "" || query.paymentStatus !== ALL_STATUS;
 
-  const purchasesData: PurchaseRow[] = (purchasesResponse?.data ?? []) as PurchaseRow[];
+  const purchasesData: PurchaseRow[] = (
+    purchasesResponse?.status === 200 ? purchasesResponse.data?.data || [] : []
+  ) as PurchaseRow[];
 
   // ─── Columns ──────────────────────────────────────────────────────────────
 
@@ -170,7 +178,9 @@ export default function PurchasesPage() {
       cell: ({ row }) => {
         const purchase = row.original;
         const hasAnyAction =
-          can("view_purchase") || can("update_purchase") || can("delete_purchase");
+          can("view_purchase") ||
+          can("update_purchase") ||
+          can("delete_purchase");
         if (!hasAnyAction) return null;
         return (
           <div className="flex items-center justify-end gap-2">
@@ -212,7 +222,7 @@ export default function PurchasesPage() {
   return (
     <>
       <div className="container mx-auto py-8 px-4 md:px-6" dir="rtl">
-        <Card className="shadow-sm border border-gray-100 bg-white">
+        <Card className="shadow-sm">
           <CardHeader className="flex flex-col gap-4 pb-4">
             {/* Title row */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -235,16 +245,12 @@ export default function PurchasesPage() {
             {/* Search & Filter row */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
               {/* Search */}
-              <div className="relative flex-1 sm:max-w-xs">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="purchases-search"
-                  placeholder="بحث برقم الفاتورة أو المورد..."
-                  value={query.search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pr-9"
-                />
-              </div>
+              <SearchInput
+                value={query.search}
+                onChange={setSearch}
+                placeholder="بحث برقم الفاتورة أو المورد..."
+                className="sm:max-w-xs"
+              />
 
               {/* Payment status filter */}
               <Select
@@ -282,7 +288,11 @@ export default function PurchasesPage() {
               columns={columns}
               data={purchasesData}
               loading={isLoading}
-              totalPages={purchasesResponse?.pagination?.totalPages ?? 0}
+              totalPages={
+                purchasesResponse?.status === 200
+                  ? (purchasesResponse.data?.pagination?.totalPages ?? 0)
+                  : 0
+              }
             />
           </CardContent>
         </Card>
@@ -309,13 +319,16 @@ export default function PurchasesPage() {
                 supplier:
                   typeof viewingPurchase.supplierId === "string"
                     ? viewingPurchase.supplierId
-                    : (viewingPurchase.supplierId as Supplier)?.name ?? "—",
+                    : ((viewingPurchase.supplierId as Supplier)?.name ?? "—"),
                 itemsCount: viewingPurchase.items?.length ?? 0,
                 totalAmount: formatCurrency(viewingPurchase.totalAmount),
                 paymentStatus:
-                  paymentStatusLabel[viewingPurchase.paymentStatus as PurchasePaymentStatus] ??
-                  viewingPurchase.paymentStatus,
-                purchaseDate: new Date(viewingPurchase.purchaseDate).toLocaleDateString("en-GB"),
+                  paymentStatusLabel[
+                    viewingPurchase.paymentStatus as PurchasePaymentStatus
+                  ] ?? viewingPurchase.paymentStatus,
+                purchaseDate: new Date(
+                  viewingPurchase.purchaseDate,
+                ).toLocaleDateString("en-GB"),
                 notes: viewingPurchase.notes ?? "—",
               }
             : {}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { MoreHorizontal, Pencil, Trash2, Plus, Search, Eye } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Plus, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiClient } from "@/lib/api-clients";
@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/common/SearchInput";
 import { DeleteDialog } from "@/components/delete-dialog"; // adjust path
 
 import { filterData } from "@/lib/utils";
@@ -45,7 +45,11 @@ interface MedicineCategoriesType {
 export default function Index() {
   const { can } = usePermissions();
   const { query, setSearch } = useMedicineCategoriesQueryFilterState();
-  const { data: medicineCategories ,refetch,isLoading} = useMedicineCategories();
+  const {
+    data: medicineCategories,
+    refetch,
+    isLoading,
+  } = useMedicineCategories();
   const queryClient = useQueryClient();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -56,14 +60,15 @@ export default function Index() {
   const [viewingCategory, setViewingCategory] =
     useState<MedicineCategoriesType | null>(null);
 
-
-    const openViewDialog = (category: MedicineCategoriesType) => {
-      setViewingCategory(category);
-      setViewDialogOpen(true);
-    };
+  const openViewDialog = (category: MedicineCategoriesType) => {
+    setViewingCategory(category);
+    setViewDialogOpen(true);
+  };
 
   const medicinesData =
-    medicineCategories?.data || ([] as MedicineCategoriesType[]);
+    medicineCategories?.status === 200
+      ? medicineCategories.data?.data || ([] as MedicineCategoriesType[])
+      : [];
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -115,7 +120,7 @@ export default function Index() {
         const hasAnyAction =
           can("update_category") ||
           can("delete_category") ||
-          can("view_category")
+          can("view_category");
         if (!hasAnyAction) return null;
         return (
           <DropdownMenu>
@@ -179,15 +184,11 @@ export default function Index() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="بحث..."
-                value={query.search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9 w-full sm:w-[250px]"
-              />
-            </div>
+            <SearchInput
+              value={query.search}
+              onChange={setSearch}
+              placeholder="بحث..."
+            />
             {can("create_category") && (
               <Link to="/categories/create">
                 <Button className="gap-2">
@@ -200,10 +201,14 @@ export default function Index() {
         </CardHeader>
         <CardContent>
           <DataTable
-            columns={columns}
+            columns={columns as any}
             data={filteredData || []}
             loading={isLoading}
-            totalPages={medicineCategories?.pagination?.totalPages || 1}
+            totalPages={
+              medicineCategories?.status === 200
+                ? medicineCategories.data?.pagination?.totalPages || 1
+                : 1
+            }
           />
         </CardContent>
       </Card>
@@ -220,7 +225,7 @@ export default function Index() {
       <ViewItemDialog
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
-        item={viewingCategory || {} }
+        item={viewingCategory || {}}
         title={`تفاصيل الفئة: ${viewingCategory?.name || ""}`}
         labels={{
           name: "اسم الفئة",

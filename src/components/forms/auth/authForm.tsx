@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router";
 import { AuthSchema, type AuthForm } from "./scham";
 import { useState } from "react";
-import { Login } from "@/apis/auth";
+import { useLogin } from "@/api";
 import { useSetAtom } from "jotai";
 import { tokenAtom, currentUserAtom } from "@/atoms";
 
@@ -32,6 +32,25 @@ export default function AuthForm() {
   const setCurrentUser = useSetAtom(currentUserAtom);
   const [visiblePassword, setVisiblePassword] = useState(false);
 
+  const loginMutation = useLogin({
+    mutation: {
+      onSuccess: (data) => {
+        if ("data" in data && data.status === 200) {
+          const { token, user } = data.data as { token: string; user: User };
+          setToken(token);
+          setCurrentUser(user);
+          toast.success("تم تسجيل الدخول بنجاح", { position: "top-center" });
+          nav("/");
+        }
+      },
+      onError: () => {
+        toast.error("بيانات غير صحيحة. تحقق من البريد الإلكتروني وكلمة المرور.", {
+          position: "top-center",
+        });
+      },
+    },
+  });
+
   const form = useForm<AuthForm>({
     resolver: zodResolver(AuthSchema),
     defaultValues: {
@@ -40,20 +59,8 @@ export default function AuthForm() {
     },
   });
 
-  const onSubmit: SubmitHandler<AuthForm> = async (Input: AuthForm) => {
-    try {
-      const res = await Login(Input.email, Input.password);
-      setToken(res.token);
-      setCurrentUser(res.user); // ← persist user + permissions to localStorage
-      toast.success("تم تسجيل الدخول بنجاح", {
-        position: "top-center",
-      });
-      nav("/");
-    } catch {
-      toast.error("بيانات غير صحيحة. تحقق من البريد الإلكتروني وكلمة المرور.", {
-        position: "top-center",
-      });
-    }
+  const onSubmit: SubmitHandler<AuthForm> = (Input: AuthForm) => {
+    loginMutation.mutate({ data: { email: Input.email, password: Input.password } });
   };
 
   return (
