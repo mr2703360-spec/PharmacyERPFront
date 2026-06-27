@@ -113,7 +113,6 @@ replaceInFile('src/pages/supplier/index.tsx', [
     ['getGetSuppliersQueryKey,', '']
 ]);
 
-// 17. users/index.tsx
 replaceInFile('src/pages/users/index.tsx', [
     ['accessorKey: "phone"', 'accessorKey: "phone" as any'],
     ['import { useQueryClient, useMutation } from "@tanstack/react-query";', 'import { useQueryClient } from "@tanstack/react-query";']
